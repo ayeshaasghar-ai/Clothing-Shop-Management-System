@@ -1,6 +1,6 @@
 # 👗 Clothing Shop Management System
 
-A full-stack ERP system built for clothing stores to manage products, customers, employees, orders, billing, and reports — all in one place.
+A full-stack Clothing Store ERP System built with Java Spring Boot & HTML — manage products, customers, employees, orders, and billing in one place.
 
 ---
 
