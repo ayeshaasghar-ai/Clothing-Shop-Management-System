@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Generate Bill | ClothWare</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    body{background:transparent;font-family:'Segoe UI',system-ui;padding:20px}
+    .cart-item{border-bottom:1px solid #eee;padding:10px 0}
+    @media print{.no-print{display:none}}
+  </style>
+</head>
+<body>
+  <h3><i class="fas fa-receipt"></i> Generate Bill / Invoice</h3>
+  <div id="alertBox" class="mt-2"></div>
+  <div class="row mt-3">
+    <div class="col-md-6">
+      <div class="card p-3 mb-3">
+        <h5>Add Products</h5>
+        <select id="productSelect" class="form-control mb-2"><option value="">Loading products...</option></select>
+        <input type="number" id="productQty" class="form-control mb-2" placeholder="Quantity" value="1" min="1">
+        <button class="btn btn-primary" onclick="addToCart()"><i class="fas fa-plus"></i> Add to Bill</button>
+      </div>
+      <div class="card p-3">
+        <h5>Customer Information</h5>
+        <input type="text" id="billCustomerName" class="form-control mb-2" placeholder="Customer Name">
+        <input type="text" id="billCustomerPhone" class="form-control mb-2" placeholder="Phone Number">
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="card p-3">
+        <h5>Cart <span id="cartCount" class="badge bg-secondary">0</span></h5>
+        <div id="cartItemsList" style="max-height:300px;overflow-y:auto"><p class="text-muted">No items added</p></div>
+        <hr><div class="d-flex justify-content-between"><strong>Total:</strong><strong id="cartTotal">$0.00</strong></div>
+        <button class="btn btn-success w-100 mt-3" id="generateBillBtn" onclick="generateBill()" disabled><i class="fas fa-file-invoice"></i> Generate Bill</button>
+        <button class="btn btn-danger w-100 mt-2" onclick="clearCart()"><i class="fas fa-trash"></i> Clear Cart</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    const API_BASE='http://localhost:8080/api';
+    const getToken=()=>localStorage.getItem('clothware_jwt');
+    async function apiFetch(path,opts={}){
+      const headers={'Content-Type':'application/json','Authorization':'Bearer '+getToken()};
+      const res=await fetch(API_BASE+path,{...opts,headers});
+      if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.error||'Error');}
+      return res.json();
+    }
+
+    let products=[], cartItems=[];
+    function showAlert(msg,type='success'){document.getElementById('alertBox').innerHTML=`<div class="alert alert-${type} alert-dismissible fade show">${msg}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>`;}
+
+    async function loadProducts(){
+      try{
+        products=await apiFetch('/products');
+        document.getElementById('productSelect').innerHTML='<option value="">Choose Product</option>'+
+          products.map(p=>`<option value="${p.id}" data-price="${p.price}" data-stock="${p.stock}">${p.name} - $${Number(p.price).toFixed(2)} (Stock: ${p.stock})</option>`).join('');
+      }catch(e){showAlert('Failed to load products: '+e.message,'danger');}
+    }
+
+    function calculateTotal(){return cartItems.reduce((s,i)=>s+(i.price*i.qty),0);}
+
+    function updateCart(){
+      const container=document.getElementById('cartItemsList');
+      document.getElementById('cartCount').textContent=cartItems.length;
+      if(cartItems.length===0){container.innerHTML='<p class="text-muted">No items added</p>';document.getElementById('generateBillBtn').disabled=true;document.getElementById('cartTotal').textContent='$0.00';return;}
+      container.innerHTML=cartItems.map((item,idx)=>`<div class="cart-item d-flex justify-content-between"><div><strong>${item.name}</strong><br><small>$${item.price} x ${item.qty}</small></div><div><span class="fw-bold">$${(item.price*item.qty).toFixed(2)}</span><button class="btn btn-sm btn-danger ms-2" onclick="removeItem(${idx})"><i class="fas fa-trash"></i></button></div></div>`).join('');
+      document.getElementById('cartTotal').textContent='$'+calculateTotal().toFixed(2);
+      document.getElementById('generateBillBtn').disabled=false;
+    }
+
+    function removeItem(idx){cartItems.splice(idx,1);updateCart();}
+    function clearCart(){if(confirm('Clear cart?')){cartItems=[];updateCart();}}
+
+    function addToCart(){
+      const select=document.getElementById('productSelect');
+      const productId=parseInt(select.value);
+      const qty=parseInt(document.getElementById('productQty').value)||1;
+      if(!productId)return showAlert('Select a product','warning');
+      const product=products.find(p=>p.id===productId);
+      if(!product)return;
+      if(qty>product.stock)return showAlert(`Only ${product.stock} in stock`,'danger');
+      const existing=cartItems.find(i=>i.id===productId);
+      if(existing)existing.qty+=qty;
+      else cartItems.push({id:product.id,name:product.name,price:product.price,qty});
+      updateCart();
+      select.value='';document.getElementById('productQty').value='1';
+    }
+
+    async function generateBill(){
+      if(cartItems.length===0)return showAlert('Cart is empty','warning');
+      const customerName=document.getElementById('billCustomerName').value||'Walk-in Customer';
+      const customerPhone=document.getElementById('billCustomerPhone').value||'';
+      const items=cartItems.map(i=>({productId:i.id,qty:i.qty}));
+      try{
+        const result=await apiFetch('/orders/generate-bill',{method:'POST',body:JSON.stringify({customerName,customerPhone,items})});
+        const itemsData=JSON.parse(result.items||'[]');
+        const billWindow=window.open('','_blank');
+        billWindow.document.write(`<html><head><title>ClothWare Invoice</title><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet"><style>body{padding:20px}@media print{body{padding:0}}.bill-container{max-width:800px;margin:0 auto}.bill-table{width:100%;border-collapse:collapse}.bill-table th,.bill-table td{padding:10px;border-bottom:1px solid #eee;text-align:left}.bill-table th{background:#1a1a1a;color:white}.bill-total{text-align:right;font-size:18px;font-weight:bold;border-top:2px solid #ddd;padding-top:15px;margin-top:15px}</style></head><body><div class="bill-container"><div class="text-center" style="border-bottom:2px dashed #ddd;padding-bottom:20px;margin-bottom:20px"><h3>ClothWare</h3><p>Clothing Shop Management System</p><p>123 Fashion Street | Phone: +1 234 567 8900</p><h5>TAX INVOICE</h5><p><strong>Bill No:</strong> INV-${result.orderId} | <strong>Date:</strong> ${new Date().toLocaleString()}</p></div><p><strong>Customer:</strong> ${customerName}</p><p><strong>Phone:</strong> ${customerPhone||'N/A'}</p><table class="bill-table"><thead><tr><th>#</th><th>Product</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead><tbody>${itemsData.map((item,i)=>`<tr><td>${i+1}</td><td>${item.name}</td><td>${item.qty}</td><td>$${Number(item.price).toFixed(2)}</td><td>$${Number(item.total).toFixed(2)}</td></tr>`).join('')}</tbody></table><div class="bill-total"><h4>Grand Total: $${Number(result.total).toFixed(2)}</h4></div><div class="text-center mt-4"><p>Thank you for shopping with ClothWare!</p></div></div><div class="text-center mt-4"><button onclick="window.print()" class="btn btn-primary">Print Bill</button> <button onclick="window.close()" class="btn btn-secondary">Close</button></div></body></html>`);
+        cartItems=[];updateCart();
+        showAlert('Bill generated! Order #'+result.orderId);
+        // Refresh product stock
+        loadProducts();
+      }catch(e){showAlert(e.message,'danger');}
+    }
+
+    loadProducts();
+  </script>
+</body>
+</html>

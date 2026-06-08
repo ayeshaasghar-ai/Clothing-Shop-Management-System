@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ClothWare | Dashboard</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', system-ui; background: #f0f0f0; overflow-x: hidden; }
+    
+    /* Sidebar - Dark Theme */
+    .sidebar {
+      background: #1a1a1a;
+      min-height: 100vh; width: 260px; position: fixed; top: 0; left: 0;
+      transition: all 0.3s; z-index: 1030;
+    }
+    .sidebar .nav-link {
+      color: #aaa; padding: 0.75rem 1.2rem;
+      font-weight: 500; border-radius: 8px;
+      margin: 4px 12px; transition: 0.2s; cursor: pointer;
+      text-decoration: none; display: block;
+    }
+    .sidebar .nav-link:hover, .sidebar .nav-link.active {
+      background: #333;
+      color: white;
+    }
+    .sidebar .nav-link i { width: 28px; margin-right: 8px; }
+    .sidebar .brand {
+      font-size: 1.3rem; font-weight: 700; padding: 1.2rem;
+      border-bottom: 1px solid #333; margin-bottom: 1rem;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .sidebar .brand img {
+      width: 35px; height: 35px; object-fit: contain;
+      border-radius: 8px;
+    }
+    .sidebar .brand span { color: white; }
+    
+    /* Main Content */
+    .main-content { margin-left: 260px; padding: 20px 24px; transition: 0.3s; }
+    
+    /* Top Navbar */
+    .top-navbar {
+      background: white;
+      border-radius: 20px; padding: 10px 20px;
+      margin-bottom: 24px;
+      display: flex; justify-content: space-between; align-items: center;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
+    
+    /* Cards */
+    .stat-card {
+      background: white; border-radius: 20px;
+      padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      transition: all 0.3s; border: none;
+    }
+    .stat-card:hover { transform: translateY(-5px); box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
+    
+    iframe { width: 100%; height: calc(100vh - 140px); border: none; border-radius: 20px; background: white; }
+    
+    .mobile-toggle { display: none; background: #1a1a1a; color: white; border: none; border-radius: 12px; padding: 8px 14px; }
+    
+    @media (max-width: 768px) {
+      .sidebar { left: -260px; }
+      .sidebar.show { left: 0; }
+      .main-content { margin-left: 0; }
+      .mobile-toggle { display: inline-block; }
+    }
+    
+    footer { text-align: center; margin-top: 20px; color: #888; padding: 15px; }
+    .logout-btn { color: #aaa !important; }
+    .logout-btn:hover { background: #dc3545 !important; color: white !important; }
+  </style>
+</head>
+<body>
+
+<div class="sidebar" id="sidebar">
+  <div class="brand">
+    <img src="logo.png" alt="ClothWare" onerror="this.src='https://via.placeholder.com/35x35?text=CW'">
+    <span>ClothWare</span>
+  </div>
+  <nav class="nav flex-column">
+    <a class="nav-link active" data-page="dashboard" href="pages/dashboard-content.html"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+    <a class="nav-link" data-page="products" href="pages/products.html"><i class="fas fa-boxes"></i> Products</a>
+    <a class="nav-link" data-page="inventory" href="pages/inventory.html"><i class="fas fa-warehouse"></i> Inventory</a>
+    <a class="nav-link" data-page="customers" href="pages/customers.html"><i class="fas fa-users"></i> Customers</a>
+    <a class="nav-link" data-page="orders" href="pages/orders.html"><i class="fas fa-shopping-cart"></i> Orders</a>
+    <a class="nav-link" data-page="billing" href="pages/billing.html"><i class="fas fa-receipt"></i> Generate Bill</a>
+    <a class="nav-link" data-page="employees" href="pages/employees.html"><i class="fas fa-id-badge"></i> Employees</a>
+    <a class="nav-link" data-page="reports" href="pages/reports.html"><i class="fas fa-chart-line"></i> Reports</a>
+    <a class="nav-link" data-page="settings" href="pages/settings.html"><i class="fas fa-cog"></i> Settings</a>
+    <a class="nav-link logout-btn" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Logout</a>
+  </nav>
+</div>
+
+<div class="main-content" id="mainContent">
+  <div class="top-navbar">
+    <button class="mobile-toggle btn" id="sidebarToggleBtn"><i class="fas fa-bars"></i> Menu</button>
+    <div class="d-flex gap-3 align-items-center">
+      <span class="badge bg-dark rounded-pill"><i class="fas fa-store"></i> ClothWare</span>
+      <div class="dropdown">
+        <button class="btn btn-light rounded-pill dropdown-toggle" type="button" data-bs-toggle="dropdown">
+          <i class="fas fa-user-circle"></i> Admin
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end">
+          <li><a class="dropdown-item" id="logoutDropdown">Logout</a></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <iframe id="pageFrame" src="pages/dashboard-content.html"></iframe>
+  <footer>© 2025 ClothWare - Premium Clothing Management System</footer>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  function checkLogin() {
+    const isLoggedIn = localStorage.getItem('clothware_logged_in') === 'true';
+    if(!isLoggedIn) { window.location.href = 'login.html'; }
+  }
+  checkLogin();
+
+  function logout() {
+    localStorage.removeItem('clothware_logged_in');
+    localStorage.removeItem('clothware_user');
+    window.location.href = 'login.html';
+  }
+
+  document.querySelectorAll('.sidebar .nav-link').forEach(link => {
+    link.addEventListener('click', (e) => {
+      if(link.id === 'logoutBtn') { e.preventDefault(); logout(); return; }
+      const pageUrl = link.getAttribute('href');
+      if(pageUrl && pageUrl !== '#') {
+        e.preventDefault();
+        document.getElementById('pageFrame').src = pageUrl;
+        document.querySelectorAll('.sidebar .nav-link').forEach(l => l.classList.remove('active'));
+        link.classList.add('active');
+        if(window.innerWidth < 768) document.getElementById('sidebar').classList.remove('show');
+      }
+    });
+  });
+
+  document.getElementById('logoutDropdown')?.addEventListener('click', (e) => { e.preventDefault(); logout(); });
+  document.getElementById('sidebarToggleBtn')?.addEventListener('click', () => { document.getElementById('sidebar').classList.toggle('show'); });
+</script>
+</body>
+</html>

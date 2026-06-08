@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Settings | ClothWare</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>body{background:transparent;font-family:'Segoe UI',system-ui;padding:20px}</style>
+</head>
+<body>
+  <h3><i class="fas fa-cog"></i> Shop Settings</h3>
+  <div id="alertBox" class="mt-2"></div>
+  <div class="card p-4 mt-3">
+    <div class="mb-3"><label class="form-label">Shop Name</label><input type="text" class="form-control" id="shopName"></div>
+    <div class="mb-3"><label class="form-label">Currency</label><select class="form-control" id="currency"><option>USD ($)</option><option>EUR (€)</option><option>GBP (£)</option><option>PKR (₨)</option></select></div>
+    <div class="mb-3"><label class="form-label">Email</label><input type="email" class="form-control" id="shopEmail"></div>
+    <div class="mb-3"><label class="form-label">Phone</label><input type="text" class="form-control" id="shopPhone"></div>
+    <div class="mb-3"><label class="form-label">Address</label><textarea class="form-control" id="shopAddress" rows="2"></textarea></div>
+    <button class="btn btn-primary" onclick="saveSettings()"><i class="fas fa-save"></i> Save Settings</button>
+  </div>
+  <script>
+    const API_BASE='http://localhost:8080/api';
+    const getToken=()=>localStorage.getItem('clothware_jwt');
+    async function apiFetch(path,opts={}){const headers={'Content-Type':'application/json','Authorization':'Bearer '+getToken()};const res=await fetch(API_BASE+path,{...opts,headers});if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.error||'Error');}return res.json();}
+    function showAlert(msg,type='success'){document.getElementById('alertBox').innerHTML=`<div class="alert alert-${type} alert-dismissible fade show">${msg}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>`;}
+    async function loadSettings(){
+      try{const s=await apiFetch('/settings');document.getElementById('shopName').value=s.shopName||'';document.getElementById('currency').value=s.currency||'USD ($)';document.getElementById('shopEmail').value=s.email||'';document.getElementById('shopPhone').value=s.phone||'';document.getElementById('shopAddress').value=s.address||'';}
+      catch(e){showAlert('Could not load settings: '+e.message,'warning');}
+    }
+    async function saveSettings(){
+      const payload={shopName:document.getElementById('shopName').value,currency:document.getElementById('currency').value,email:document.getElementById('shopEmail').value,phone:document.getElementById('shopPhone').value,address:document.getElementById('shopAddress').value};
+      try{await apiFetch('/settings',{method:'PUT',body:JSON.stringify(payload)});showAlert('Settings saved successfully!');}catch(e){showAlert(e.message,'danger');}
+    }
+    loadSettings();
+  </script>
+</body>
+</html>

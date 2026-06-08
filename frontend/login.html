@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ClothWare | Login</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Poppins', sans-serif; min-height: 100vh; background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%); display: flex; align-items: center; justify-content: center; }
+    .login-card { background: white; border-radius: 30px; padding: 45px; box-shadow: 0 25px 50px rgba(0,0,0,0.3); width: 100%; max-width: 450px; animation: fadeInUp 0.6s ease; margin: 20px; text-align: center; }
+    @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+    .logo-img { width: 100px; height: 100px; object-fit: contain; border-radius: 20px; margin-bottom: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+    .login-header { text-align: center; margin-bottom: 30px; }
+    .login-header h2 { font-weight: 700; color: #1a1a1a; font-size: 32px; }
+    .login-header p { color: #666; font-size: 14px; }
+    .form-group { margin-bottom: 20px; text-align: left; }
+    .form-group label { font-weight: 500; margin-bottom: 8px; color: #333; display: block; }
+    .form-group input { border-radius: 12px; padding: 12px 15px; border: 2px solid #e0e0e0; width: 100%; transition: all 0.3s; }
+    .form-group input:focus { border-color: #1a1a1a; outline: none; box-shadow: 0 0 0 3px rgba(0,0,0,0.1); }
+    .login-btn { background: #1a1a1a; border: none; padding: 12px; border-radius: 12px; font-weight: 600; font-size: 16px; width: 100%; color: white; cursor: pointer; transition: 0.3s; }
+    .login-btn:hover { background: #333; transform: translateY(-2px); }
+    .login-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+    .demo-credentials { background: #f8f9fa; border-radius: 12px; padding: 15px; margin-top: 20px; font-size: 13px; }
+    .error-msg { background: #fee2e2; color: #dc2626; border-radius: 10px; padding: 10px 15px; margin-bottom: 15px; display: none; }
+    .back-link { text-align: center; margin-top: 20px; }
+    .back-link a { color: #666; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="login-card">
+    <img src="Logo.png" alt="ClothWare Logo" class="logo-img" onerror="this.src='https://via.placeholder.com/100x100?text=CW'">
+    <div class="login-header"><h2>ClothWare</h2><p>Clothing Shop Management System</p></div>
+    <div class="error-msg" id="errorMsg"><i class="fas fa-exclamation-circle me-2"></i><span id="errorText"></span></div>
+    <div class="form-group">
+      <label><i class="fas fa-envelope"></i> Email Address</label>
+      <input type="email" id="loginEmail" placeholder="admin@clothware.com" value="admin@clothware.com">
+    </div>
+    <div class="form-group">
+      <label><i class="fas fa-lock"></i> Password</label>
+      <input type="password" id="loginPassword" placeholder="••••••" value="admin123">
+    </div>
+    <button class="login-btn" id="loginBtn" onclick="doLogin()">
+      <i class="fas fa-sign-in-alt me-2"></i> Login to Dashboard
+    </button>
+    <div class="demo-credentials">
+      <i class="fas fa-info-circle"></i> Demo Credentials:<br>
+      <strong>Email:</strong> admin@clothware.com &nbsp;|&nbsp; <strong>Password:</strong> admin123
+    </div>
+    <div class="back-link"><a href="index.html"><i class="fas fa-arrow-left"></i> Back to Home</a></div>
+  </div>
+
+  <script>
+    const API_BASE = 'http://localhost:8080/api';
+
+    // If already logged in, go to dashboard
+    if (localStorage.getItem('clothware_jwt')) {
+      window.location.href = 'dashboard.html';
+    }
+
+    async function doLogin() {
+      const email = document.getElementById('loginEmail').value.trim();
+      const password = document.getElementById('loginPassword').value;
+      const btn = document.getElementById('loginBtn');
+      const errDiv = document.getElementById('errorMsg');
+      const errText = document.getElementById('errorText');
+
+      errDiv.style.display = 'none';
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Logging in...';
+
+      try {
+        const res = await fetch(API_BASE + '/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || 'Login failed');
+        }
+
+        const data = await res.json();
+        localStorage.setItem('clothware_jwt', data.token);
+        localStorage.setItem('clothware_logged_in', 'true');
+        localStorage.setItem('clothware_user', data.email);
+        window.location.href = 'dashboard.html';
+
+      } catch (err) {
+        errText.textContent = err.message || 'Cannot connect to server. Is the backend running?';
+        errDiv.style.display = 'block';
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-sign-in-alt me-2"></i> Login to Dashboard';
+      }
+    }
+
+    // Allow Enter key
+    document.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+  </script>
+</body>
+</html>

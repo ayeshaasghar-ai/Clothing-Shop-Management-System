@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Orders | ClothWare</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>body{background:transparent;font-family:'Segoe UI',system-ui;padding:20px}.table-responsive{background:white;border-radius:20px;padding:16px}</style>
+</head>
+<body>
+  <h3><i class="fas fa-shopping-cart"></i> Order Management</h3>
+  <div class="table-responsive mt-3">
+    <table class="table table-hover">
+      <thead><tr><th>ID</th><th>Customer</th><th>Total</th><th>Status</th><th>Date</th><th>Action</th></tr></thead>
+      <tbody id="ordersBody"><tr><td colspan="6" class="text-center">Loading...</td></tr></tbody>
+    </table>
+  </div>
+  <div class="modal fade" id="orderDetailModal" tabindex="-1">
+    <div class="modal-dialog"><div class="modal-content">
+      <div class="modal-header bg-dark text-white"><h5>Order Details</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body" id="orderDetailBody"></div>
+    </div></div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    const API_BASE='http://localhost:8080/api';
+    const getToken=()=>localStorage.getItem('clothware_jwt');
+    async function apiFetch(path){const res=await fetch(API_BASE+path,{headers:{'Authorization':'Bearer '+getToken()}});return res.json();}
+    let modal,orders=[];
+    window.addEventListener('DOMContentLoaded',()=>{modal=new bootstrap.Modal(document.getElementById('orderDetailModal'));loadOrders();});
+    async function loadOrders(){
+      try{
+        orders=await apiFetch('/orders');
+        document.getElementById('ordersBody').innerHTML=orders.length===0?'<tr><td colspan="6" class="text-muted text-center">No orders yet</td></tr>':orders.map(o=>`<tr><td>#${o.id}</td><td>${o.customerName}</td><td>$${Number(o.total).toFixed(2)}</td><td><span class="badge ${o.status==='Completed'?'bg-success':'bg-warning'}">${o.status}</span></td><td>${o.date}</td><td><button class="btn btn-sm btn-info" onclick="viewOrder(${o.id})">View</button></td></tr>`).join('');
+      }catch(e){document.getElementById('ordersBody').innerHTML=`<tr><td colspan="6" class="text-danger">${e.message}</td></tr>`;}
+    }
+    function viewOrder(id){
+      const o=orders.find(x=>x.id===id);
+      if(!o)return;
+      let itemsHtml='';
+      try{const items=JSON.parse(o.items||'[]');itemsHtml=items.map(i=>`<li>${i.name} x${i.qty} = $${Number(i.total||i.price*i.qty).toFixed(2)}</li>`).join('');}catch{}
+      document.getElementById('orderDetailBody').innerHTML=`<p><strong>Order ID:</strong> #${o.id}</p><p><strong>Customer:</strong> ${o.customerName}</p><p><strong>Phone:</strong> ${o.customerPhone||'N/A'}</p><p><strong>Total:</strong> $${Number(o.total).toFixed(2)}</p><p><strong>Status:</strong> ${o.status}</p><p><strong>Date:</strong> ${o.date}</p>${itemsHtml?`<p><strong>Items:</strong></p><ul>${itemsHtml}</ul>`:''}`;
+      modal.show();
+    }
+  </script>
+</body>
+</html>

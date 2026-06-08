@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard Overview</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    body { background: transparent; font-family: 'Segoe UI', system-ui; padding: 0; margin: 0; }
+    .stat-card { background: white; border-radius: 20px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); transition: all 0.3s; }
+    .stat-card:hover { transform: translateY(-5px); }
+    .stat-card .icon { font-size: 2rem; margin-bottom: 8px; }
+    .badge-low { background: #fee2e2; color: #dc2626; padding: 3px 10px; border-radius: 20px; font-size: 12px; }
+    .skeleton { background: #e5e7eb; border-radius: 8px; animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+  </style>
+</head>
+<body>
+  <div class="container-fluid p-3">
+    <div class="row g-3" id="statsRow">
+      <div class="col-md-3"><div class="stat-card"><div class="skeleton" style="height:60px"></div></div></div>
+      <div class="col-md-3"><div class="stat-card"><div class="skeleton" style="height:60px"></div></div></div>
+      <div class="col-md-3"><div class="stat-card"><div class="skeleton" style="height:60px"></div></div></div>
+      <div class="col-md-3"><div class="stat-card"><div class="skeleton" style="height:60px"></div></div></div>
+    </div>
+    <div class="row mt-4 g-3">
+      <div class="col-md-6">
+        <div class="card p-3">
+          <h5><i class="fas fa-chart-line me-2"></i>Sales Overview</h5>
+          <div id="salesSummary" class="mt-3"></div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card p-3">
+          <h5><i class="fas fa-clock me-2"></i>Recent Orders</h5>
+          <ul class="list-group mt-2" id="recentOrdersList">
+            <li class="list-group-item skeleton" style="height:40px;margin-bottom:5px"></li>
+            <li class="list-group-item skeleton" style="height:40px;margin-bottom:5px"></li>
+            <li class="list-group-item skeleton" style="height:40px"></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = 'http://localhost:8080/api';
+    function getToken() { return localStorage.getItem('clothware_jwt'); }
+    async function apiFetch(path) {
+      const res = await fetch(API_BASE + path, {
+        headers: { 'Authorization': 'Bearer ' + getToken() }
+      });
+      if (!res.ok) throw new Error('API error');
+      return res.json();
+    }
+
+    async function loadDashboard() {
+      try {
+        const stats = await apiFetch('/dashboard/stats');
+        document.getElementById('statsRow').innerHTML = `
+          <div class="col-md-3"><div class="stat-card">
+            <div class="icon">💰</div><h6 class="text-secondary">Total Sales</h6>
+            <h2>$${Number(stats.totalSales).toFixed(2)}</h2>
+          </div></div>
+          <div class="col-md-3"><div class="stat-card">
+            <div class="icon">📦</div><h6 class="text-secondary">Orders</h6>
+            <h2>${stats.totalOrders}</h2>
+          </div></div>
+          <div class="col-md-3"><div class="stat-card">
+            <div class="icon">🧥</div><h6 class="text-secondary">Products</h6>
+            <h2>${stats.totalProducts}
+              ${stats.lowStockCount > 0 ? `<span class="badge-low fs-6">${stats.lowStockCount} low</span>` : ''}
+            </h2>
+          </div></div>
+          <div class="col-md-3"><div class="stat-card">
+            <div class="icon">👥</div><h6 class="text-secondary">Customers</h6>
+            <h2>${stats.totalCustomers}</h2>
+          </div></div>
+        `;
+
+        document.getElementById('salesSummary').innerHTML = `
+          <div class="row text-center g-2">
+            <div class="col-6"><div class="p-3 bg-light rounded"><strong>$${Number(stats.totalSales).toFixed(2)}</strong><br><small class="text-muted">Revenue</small></div></div>
+            <div class="col-6"><div class="p-3 bg-light rounded"><strong>${stats.totalOrders}</strong><br><small class="text-muted">Total Orders</small></div></div>
+            <div class="col-6"><div class="p-3 bg-light rounded"><strong>${stats.totalEmployees}</strong><br><small class="text-muted">Employees</small></div></div>
+            <div class="col-6"><div class="p-3 bg-light rounded"><strong>${stats.lowStockCount}</strong><br><small class="text-muted">Low Stock</small></div></div>
+          </div>
+        `;
+
+        const recentHtml = stats.recentOrders.length === 0
+          ? '<li class="list-group-item text-muted">No orders yet</li>'
+          : stats.recentOrders.map(o => `
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                <span><strong>${o.customerName}</strong><br><small class="text-muted">${o.date}</small></span>
+                <span>$${Number(o.total).toFixed(2)}</span>
+                <span class="badge ${o.status === 'Completed' ? 'bg-success' : 'bg-warning'}">${o.status}</span>
+              </li>`).join('');
+        document.getElementById('recentOrdersList').innerHTML = recentHtml;
+
+      } catch (err) {
+        document.getElementById('statsRow').innerHTML = `
+          <div class="col-12"><div class="alert alert-warning">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            Cannot connect to backend. Make sure the Java server is running on port 8080.
+            <br><small>Error: ${err.message}</small>
+          </div></div>`;
+      }
+    }
+
+    loadDashboard();
+  </script>
+</body>
+</html>
